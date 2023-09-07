@@ -147,10 +147,14 @@ class FFMPEGMuxer(StreamIO):
 
         self._cmd = [self.command(session), '-nostats', '-y']
         for np in self.pipes:
-            #-probesize 80M -fflags +igndts -strict experimental
-            self._cmd.extend(['-thread_queue_size', '2768'])
+            #-strict  
+            self._cmd.extend(['-thread_queue_size', '5'])
             self._cmd.extend(['-threads', '1'])
-            self._cmd.extend(['-probesize', '19MB'])
+            self._cmd.extend(['-probesize', '9000000'])
+            self._cmd.extend(['-analyzeduration', '5000000'])
+            self._cmd.extend(['-strict', 'experimental'])
+            self._cmd.extend(['-nofix_dts', '1'])
+
             if dkey:
                 self._cmd.extend(['-decryption_key', dkey])
             self._cmd.extend(["-i", str(np.path)])
