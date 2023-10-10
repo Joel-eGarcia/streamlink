@@ -12,9 +12,9 @@ from streamlink import StreamError
 from streamlink.compat import devnull
 from streamlink.stream.stream import Stream, StreamIO
 from streamlink.utils.named_pipe import NamedPipe, NamedPipeBase
+import os  # Import the 'os' module to work with file paths
 
 log = logging.getLogger(__name__)
-
 
 class MuxedStream(Stream):
     """
@@ -131,19 +131,15 @@ class FFMPEGMuxer(StreamIO):
         self.streams = streams
 
         self.pipes = [NamedPipe() for _ in self.streams]
-        self.pipe_threads = [threading.Thread(target=self.copy_to_pipe, args=(stream, np))
-                             for stream, np in
-                             zip(self.streams, self.pipes)]
 
-        ofmt = session.options.get("ffmpeg-fout") or options.pop("format", self.DEFAULT_OUTPUT_FORMAT)
-        outpath = options.pop("outpath", "pipe:1")
-        videocodec = session.options.get("ffmpeg-video-transcode") or options.pop("vcodec", self.DEFAULT_VIDEO_CODEC)
-        audiocodec = session.options.get("ffmpeg-audio-transcode") or options.pop("acodec", self.DEFAULT_AUDIO_CODEC)
-        metadata = options.pop("metadata", {})
-        maps = options.pop("maps", [])
-        copyts = session.options.get("ffmpeg-copyts") or options.pop("copyts", False)
-        start_at_zero = session.options.get("ffmpeg-start-at-zero") or options.pop("start_at_zero", False)
-        dkey = session.options.get("ffmpeg-dkey") or options.pop("dkey", False)
+        # Add HLS output directory handling here
+        hls_output_dir = session.options.get("hout") or options.pop("hout", None)
+        if hls_output_dir:
+            # Set HLS output options
+            self._cmd.extend(["-hls_time", "10"])  # Set the segment duration (e.g., 10 seconds)
+            self._cmd.extend(["-hls_list_size", "6"])  # Set the maximum number of playlists (e.g., 6)
+            self._cmd.extend(["-hls_wrap", "18"])  # Set the maximum number of segments (e.g., 18)
+            self._cmd.extend([os.path.join(hls_output_dir, "index.m3u8")])  # Output HLS playlist
 
         self._cmd = [self.command(session), '-nostats', '-y']
         for np in self.pipes:
@@ -153,7 +149,6 @@ class FFMPEGMuxer(StreamIO):
             self._cmd.extend(['-probesize', '9000000'])
             self._cmd.extend(['-analyzeduration', '5000000'])
             self._cmd.extend(['-strict', 'experimental'])
-           # self._cmd.extend(['-nofix_dts', '1'])
 
             if dkey:
                 self._cmd.extend(['-decryption_key', dkey])
